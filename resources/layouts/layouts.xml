@@ -1,0 +1,45 @@
+<layouts xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <!-- A generic, centered layout. -->
+    <layout id="MainLayout">
+        <drawable class="Background" />
+        <label id="label" x="center" y="center" color="Graphics.COLOR_LT_GRAY" justification="Graphics.TEXT_JUSTIFY_CENTER" font="Graphics.FONT_TINY" />
+        <label id="value" x="center" y="center" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_CENTER" font="Graphics.FONT_LARGE" />
+        <label id="subvalue" x="center" y="center" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_CENTER" font="Graphics.FONT_XTINY" />
+    </layout>
+
+    <!-- Layouts used for the for the four quadrants. -->
+    <layout id="TopLeftLayout">
+        <drawable class="Background" />
+        <label id="label" x="95" y="75" color="Graphics.COLOR_LT_GRAY" justification="Graphics.TEXT_JUSTIFY_RIGHT" font="Graphics.FONT_TINY" />
+        <label id="value" x="95" y="42" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_RIGHT" font="Graphics.FONT_LARGE" />
+    </layout>
+    <layout id="TopRightLayout">
+        <drawable class="Background" />
+        <label id="label" x="14" y="75" color="Graphics.COLOR_LT_GRAY" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_TINY" />
+        <label id="value" x="14" y="42" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_LARGE" />
+    </layout>
+    <layout id="BottomLeftLayout">
+        <drawable class="Background" />
+        <label id="label" x="95" y="10" color="Graphics.COLOR_LT_GRAY" justification="Graphics.TEXT_JUSTIFY_RIGHT" font="Graphics.FONT_TINY" />
+        <label id="value" x="95" y="27" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_RIGHT" font="Graphics.FONT_LARGE" />
+    </layout>
+    <layout id="BottomRightLayout">
+        <drawable class="Background" />
+        <label id="label" x="14" y="10" color="Graphics.COLOR_LT_GRAY" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_TINY" />
+        <label id="value" x="14" y="27" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_LARGE" />
+    </layout>
+
+    <!-- Compact, two-column layout for quadrants to show top HRs -->
+    <layout id="CompactQuadLayout">
+        <drawable class="Background" />
+        <label id="label" x="center" y="2" color="Graphics.COLOR_LT_GRAY" justification="Graphics.TEXT_JUSTIFY_CENTER" font="Graphics.FONT_XTINY" />
+        <!-- Left column -->
+        <label id="v1" x="14" y="18" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_TINY" />
+        <label id="v2" x="14" y="34" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_TINY" />
+        <label id="v3" x="14" y="50" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_TINY" />
+        <!-- Right column -->
+        <label id="v4" x="64" y="18" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_TINY" />
+        <label id="v5" x="64" y="34" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_TINY" />
+        <label id="v6" x="64" y="50" color="Graphics.COLOR_WHITE" justification="Graphics.TEXT_JUSTIFY_LEFT" font="Graphics.FONT_TINY" />
+    </layout>
+</layouts>
