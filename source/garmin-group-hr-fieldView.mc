@@ -13,14 +13,18 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
     hidden var mAnt as AntGroupTransport;
     hidden var mGroupCode as Number;
     hidden var mSelfId as Number;
+    hidden var mInitials as String;
+    hidden var mLastAppliedInitials as String or Null;
+    hidden var mLastGroupCode as Number;
+    hidden var mZone2Threshold as Number or Null;
 
     function initialize() {
         DataField.initialize();
         mValue = 0.0f;
         mGroup = new GroupManager();
 
-        // Fixed default group code (settings removed)
-        mGroupCode = 1234;
+    // Default group code (can be overridden by settings)
+    mGroupCode = 1234;
 
         // Persist a stable self id
         var stored = Storage.getValue("self_id");
@@ -30,18 +34,98 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
         } else {
             mSelfId = (stored as Number);
         }
+        // Persist or derive two-letter initials
+        var storedIni = Storage.getValue("self_initials");
+        if (storedIni == null) {
+            // Deterministic pseudo-random initials from self id
+            var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+            var i1 = (mSelfId % 26) as Number;
+            var i2 = (((mSelfId / 26) as Number) % 26) as Number;
+            mInitials = letters.substring(i1, 1) + letters.substring(i2, 1);
+            Storage.setValue("self_initials", mInitials);
+        } else {
+            mInitials = (storedIni as String);
+        }
 
-        mAnt = new AntGroupTransport(mGroupCode, mSelfId, method(:onPeerPacket));
+        // Override from App Settings if provided
+        refreshInitialsFromSettings();
+
+        // Allow settings to override group code before starting transport
+        refreshGroupCodeFromSettings();
+    // Read Zone 2 threshold
+    refreshZone2FromSettings();
+
+        mAnt = new AntGroupTransport(mGroupCode, mSelfId, method(:onPeerPacket), mInitials);
+        mLastAppliedInitials = mInitials;
+        mLastGroupCode = mGroupCode;
+    }
+
+    // Read initials from App Settings (if available) and apply/persist
+    function refreshInitialsFromSettings() as Void {
+        var ini = null;
+        try { ini = Application.Properties.getValue("initials"); } catch(e) { ini = null; }
+        if (ini != null) {
+            var s = (ini + "").toUpper();
+            if (s.length() >= 2) {
+                var s2 = s.substring(0, 2);
+                if (s2 != mInitials) {
+                    mInitials = s2;
+                    Storage.setValue("self_initials", mInitials);
+                    if (mAnt != null) { mAnt.setInitials(mInitials); }
+                }
+            }
+        }
     }
 
     function onPeerPacket(pkt as Dictionary) as Void {
         if (!(pkt has :hr) || !(pkt has :peerId)) { return; }
-        mGroup.upsertPeer(pkt[:peerId], pkt[:hr]);
+    var ini = null;
+    try { ini = pkt[:initials] as String; } catch(e) { ini = null; }
+    var z2 = null;
+    try { z2 = pkt[:z2] as Number; } catch(e) { z2 = null; }
+    mGroup.upsertPeer(pkt[:peerId], pkt[:hr], ini, z2);
     }
+                
 
     function onShow() as Void {
         DataField.onShow();
+        // Pick up any settings changes made off-device
+        refreshInitialsFromSettings();
+        if (mAnt != null && mLastAppliedInitials != mInitials) { mAnt.setInitials(mInitials); mLastAppliedInitials = mInitials; }
+        // Apply group code changes by recreating transport if needed
+        refreshGroupCodeFromSettings();
+        if (mGroupCode != mLastGroupCode) {
+            if (mAnt != null) { mAnt.stop(); }
+            mAnt = new AntGroupTransport(mGroupCode, mSelfId, method(:onPeerPacket), mInitials);
+            mLastGroupCode = mGroupCode;
+        }
+        // Refresh zone 2 threshold
+        refreshZone2FromSettings();
+    // Push my z2 to transport
+    if (mAnt != null) { mAnt.setZone2Threshold(mZone2Threshold); }
         if (mAnt != null) { mAnt.start(); }
+    }
+
+    // Read Zone 2 threshold from settings
+    function refreshZone2FromSettings() as Void {
+        var z = null;
+        try { z = Application.Properties.getValue("zone2Threshold"); } catch(e) { z = null; }
+        if (z != null) {
+            var n = null;
+            try { n = z as Number; } catch(e) { n = null; }
+            if (n != null && n > 0 && n <= 255) { mZone2Threshold = (n as Number); }
+        }
+    }
+
+    // Read group code from settings if present
+    function refreshGroupCodeFromSettings() as Void {
+        var gc = null;
+        try { gc = Application.Properties.getValue("groupCode"); } catch(e) { gc = null; }
+        if (gc != null) {
+            var n = null;
+            try { n = gc as Number; } catch(e) { n = null; }
+            if (n != null && n > 0 && n <= 65535) { mGroupCode = (n as Number); }
+        }
     }
 
     function onHide() as Void {
@@ -134,7 +218,26 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
                     if (j < list.size()) {
                         var item = list[j] as Dictionary;
                         var h = item[:hr] as Numeric;
-                        tv.setText((h as Float).format("%.0f"));
+                        var tag = null;
+                        var ini2 = null;
+                        try { ini2 = item[:initials] as String; } catch(e) { ini2 = null; }
+                        if (ini2 != null) { tag = ini2 + ""; }
+                        else { tag = (item[:id] + ""); }
+                        var hStr = (h as Float).format("%.0f");
+                        // Percentage of peer's Zone 2 threshold if present
+                        var pctStr = "";
+                        var pz2 = null;
+                        try { pz2 = item[:z2] as Number; } catch(e) { pz2 = null; }
+                        if (pz2 != null && (pz2 as Number) > 0) {
+                            var pct = ((h as Float) / ((pz2 as Number) as Float)) * 100.0f;
+                            pctStr = " " + (pct as Float).format("%.0f") + "%";
+                        }
+                        tv.setText(tag + " " + hStr + pctStr);
+                        // Color per peer's threshold if provided
+                        if (pz2 != null) {
+                            if (((h as Number) > (pz2 as Number))) { tv.setColor(Graphics.COLOR_RED); }
+                            else { tv.setColor(Graphics.COLOR_GREEN); }
+                        }
                     } else {
                         tv.setText("");
                     }
@@ -155,19 +258,55 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
             var top = mGroup.getTopPeer(freshness);
             var peers = mGroup.getTopPeers(freshness, 3);
 
-            // Prefer top peer with ID in primary line
+        // Prefer top peer with initials (fallback to ID) in primary line
             if (value != null) {
                 if (top != null) {
-                    var hr = (top[:hr] as Float).format("%.0f");
-                    var idStr = top[:id] + "";
-                    value.setText(hr + " (ID " + idStr + ")");
+                    var hrNum = null;
+                    try { hrNum = top[:hr] as Number; } catch(e) { hrNum = null; }
+                    var hr = (hrNum == null ? "" : ((hrNum as Float).format("%.0f")));
+                    var tag = null;
+            var ini3 = null;
+            try { ini3 = top[:initials] as String; } catch(e) { ini3 = null; }
+            if (ini3 != null) { tag = ini3 + ""; }
+                    else { tag = ("ID " + (top[:id] + "")); }
+                    // Percentage of that peer's Zone 2 threshold if present
+                    var pctStr = "";
+                    var tz2 = null;
+                    try { tz2 = top[:z2] as Number; } catch(e) { tz2 = null; }
+                    if (tz2 != null && hrNum != null && (tz2 as Number) > 0) {
+                        var pct = ((hrNum as Float) / ((tz2 as Number) as Float)) * 100.0f;
+                        pctStr = " " + (pct as Float).format("%.0f") + "%";
+                    }
+                    value.setText(tag + " " + hr + pctStr);
+                    // If this is my own HR being shown on primary line, color by Zone 2
+                    var isSelf = false;
+                    try { isSelf = ((top[:id] as Number) == mSelfId); } catch(e) { isSelf = false; }
+                    if (isSelf && mZone2Threshold != null) {
+                        if (hrNum != null) {
+                            if (hrNum > (mZone2Threshold as Number)) { value.setColor(Graphics.COLOR_RED); }
+                            else { value.setColor(Graphics.COLOR_GREEN); }
+                        }
+                    }
                 } else {
                     var avg = mGroup.getGroupAverage(true, freshness);
                     var cnt = mGroup.getPeerCount(freshness);
                     if (avg != null) {
                         value.setText("Avg " + (avg as Float).format("%.0f") + " (" + cnt + ")");
                     } else {
-                        value.setText((mValue as Float).format("%.0f"));
+                        // Show my own initials + HR (+% if z2 set)
+                        var myHrStr = (mValue as Float).format("%.0f");
+                        var pctSelf = "";
+                        if (mZone2Threshold != null && (mZone2Threshold as Number) > 0) {
+                            var pctS = ((mValue as Float) / ((mZone2Threshold as Number) as Float)) * 100.0f;
+                            pctSelf = " " + (pctS as Float).format("%.0f") + "%";
+                        }
+                        value.setText(mInitials + " " + myHrStr + pctSelf);
+                        // If showing my own HR only, color by Zone 2
+                        if (mZone2Threshold != null) {
+                            var myHr = mValue as Number;
+                            if (myHr > (mZone2Threshold as Number)) { value.setColor(Graphics.COLOR_RED); }
+                            else { value.setColor(Graphics.COLOR_GREEN); }
+                        }
                     }
                 }
             }
@@ -181,7 +320,12 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
                         var hNum = item[:hr] as Numeric;
                         var hStr = (hNum as Float).format("%.0f");
                         if (i > 0) { s += ","; }
-                        s += hStr;
+                        // Append a marker if over that peer's threshold
+                        var mark = "";
+                        var pz = null;
+                        try { pz = item[:z2] as Number; } catch(e) { pz = null; }
+                        if (pz != null && ((hNum as Number) > (pz as Number))) { mark = "!"; }
+                        s += hStr + mark;
                     }
                     sub.setText(s);
                 } else {

@@ -4,9 +4,13 @@ import Toybox.Lang;
 class PeerRec {
     var hr as Numeric;
     var ts as Number; // ms since app start
-    function initialize(h as Numeric, t as Number) {
+    var initials as String or Null;
+    var z2 as Number or Null;
+    function initialize(h as Numeric, t as Number, ini as String or Null, z as Number or Null) {
         hr = h;
         ts = t;
+        initials = ini;
+        z2 = z;
     }
 }
 
@@ -26,8 +30,8 @@ class GroupManager {
 
     function getMyHr() as Numeric or Null { return _myHr; }
 
-    function upsertPeer(peerId as String or Number, hr as Numeric) as Void {
-        _peers[peerId] = new PeerRec(hr, System.getTimer());
+    function upsertPeer(peerId as String or Number, hr as Numeric, initials as String or Null, z2 as Number or Null) as Void {
+        _peers[peerId] = new PeerRec(hr, System.getTimer(), initials, z2);
     }
 
     function prune(maxAgeMs as Number) as Void {
@@ -67,38 +71,46 @@ class GroupManager {
         return sum / count;
     }
 
-    // Returns { :id => peerId, :hr => Numeric } or null
+    // Returns { :id => peerId, :hr => Numeric, :initials => String?, :z2 => Number? } or null
     function getTopPeer(maxAgeMs as Number) as Dictionary or Null {
         prune(maxAgeMs);
         var now = System.getTimer();
         var keys = _peers.keys();
         var bestId = null;
         var bestHr = -1.0f;
+        var bestIni = null;
+        var bestZ2 = null;
         for (var i = 0; i < keys.size(); i += 1) {
             var k = keys[i];
             var rec = _peers[k] as PeerRec;
             if ((now - rec.ts) <= maxAgeMs) {
                 var hrf = (rec.hr as Float);
-                if (hrf > bestHr) { bestHr = hrf; bestId = k; }
+                if (hrf > bestHr) { bestHr = hrf; bestId = k; bestIni = rec.initials; bestZ2 = rec.z2; }
             }
         }
         if (bestId == null) { return null; }
-        return { :id => bestId, :hr => bestHr };
+        var out = { :id => bestId, :hr => bestHr, :initials => bestIni } as Dictionary;
+        if (bestZ2 != null) { out[:z2] = bestZ2; }
+        return out;
     }
 
-    // Returns array of up to 'limit' peers sorted by HR desc, items are { :id, :hr }
+    // Returns array of up to 'limit' peers sorted by HR desc, items are { :id, :hr, :initials?, :z2? }
     function getTopPeers(maxAgeMs as Number, limit as Number) as Array {
         prune(maxAgeMs);
         var now = System.getTimer();
         var keys = _peers.keys();
         var ids = [];
         var hrs = [];
+        var inis = [];
+        var z2s = [];
         for (var i = 0; i < keys.size(); i += 1) {
             var k = keys[i];
             var rec = _peers[k] as PeerRec;
             if ((now - rec.ts) <= maxAgeMs) {
                 ids.add(k);
                 hrs.add(rec.hr);
+                inis.add(rec.initials);
+                z2s.add(rec.z2);
             }
         }
         var out = [];
@@ -112,9 +124,13 @@ class GroupManager {
                 if (hrf > bestHr) { bestHr = hrf; bestIdx = j; }
             }
             if (bestIdx >= 0) {
-                out.add({ :id => ids[bestIdx], :hr => hrs[bestIdx] });
+                var item = { :id => ids[bestIdx], :hr => hrs[bestIdx], :initials => inis[bestIdx] } as Dictionary;
+                if (z2s[bestIdx] != null) { item[:z2] = z2s[bestIdx]; }
+                out.add(item);
                 ids.remove(bestIdx);
                 hrs.remove(bestIdx);
+                inis.remove(bestIdx);
+                z2s.remove(bestIdx);
             } else {
                 break;
             }

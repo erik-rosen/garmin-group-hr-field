@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings>
+    <setting title="Initials">
+        <settingConfig type="alphaNumeric" maxLength="2"/>
+        <defaults>
+            <entry>
+                <default id="initials">ER</default>
+            </entry>
+        </defaults>
+    </setting>
+    <setting title="Group Code">
+        <settingConfig type="numeric" min="1" max="65535"/>
+        <defaults>
+            <entry>
+                <default id="groupCode">1234</default>
+            </entry>
+        </defaults>
+    </setting>
+    <setting title="Zone 2 Threshold">
+        <settingConfig type="numeric" min="1" max="255"/>
+        <defaults>
+            <entry>
+                <default id="zone2Threshold">170</default>
+            </entry>
+        </defaults>
+    </setting>
+</settings>
