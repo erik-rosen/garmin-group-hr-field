@@ -37,15 +37,15 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
         // Persist or derive two-letter initials
         var storedIni = Storage.getValue("self_initials");
         if (storedIni == null) {
-            // Deterministic pseudo-random initials from self id
-            var letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-            var i1 = (mSelfId % 26) as Number;
-            var i2 = (((mSelfId / 26) as Number) % 26) as Number;
-            mInitials = letters.substring(i1, 1) + letters.substring(i2, 1);
+            // Default to 'ER' instead of random initials
+            mInitials = "ER";
             Storage.setValue("self_initials", mInitials);
         } else {
             mInitials = (storedIni as String);
         }
+
+        // Set default Zone 2 threshold
+        mZone2Threshold = 170;
 
     // Defer reading settings until onShow to avoid platform init quirks
 
@@ -129,9 +129,11 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
         }
     }
 
-    // Safe settings accessor: use string key with Properties.getValue; return null on any failure
+    // Safe settings accessor: disabled due to symbol invocation issues on Edge 1040
     hidden function _getProp(key as String) as Lang.Object or Null {
-        try { return Application.Properties.getValue(key); } catch(e) { return null; }
+        // Temporarily disabled - Properties API causes runtime crashes on some devices
+        // try { return Application.Properties.getValue(key); } catch(e) { return null; }
+        return null;
     }
 
     function onHide() as Void {
@@ -239,6 +241,8 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
                             pctStr = " " + (pct as Float).format("%.0f") + "%";
                         }
                         tv.setText(tag + " " + hStr + pctStr);
+                        // Reset to normal font size for peer data
+                        tv.setFont(Graphics.FONT_SMALL);
                         // Color per peer's threshold if provided
                         if (pz2 != null) {
                             if (((h as Number) > (pz2 as Number))) { tv.setColor(Graphics.COLOR_RED); }
@@ -248,8 +252,12 @@ class garmin_group_hr_fieldView extends WatchUi.DataField {
                         // Show "No peers nearby" only in first row if no peers at all
                         tv.setText("No peers nearby");
                         tv.setColor(Graphics.COLOR_LT_GRAY);
+                        // Set smaller font size (half of default)
+                        tv.setFont(Graphics.FONT_XTINY);
                     } else {
                         tv.setText("");
+                        // Reset font size for empty cells
+                        tv.setFont(Graphics.FONT_SMALL);
                     }
                 }
             }
