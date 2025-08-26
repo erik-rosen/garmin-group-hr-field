@@ -35,12 +35,15 @@ class AntGroupTransport {
         _hasIni = false;
         _ini1 = 0; _ini2 = 0;
         if (initials == null) { return; }
-        var s = (initials as String).toUpper();
-        if (s.length() >= 2) {
-            var c1 = s.substring(0, 1);
-            var c2 = s.substring(1, 1);
-            var i1 = ALPHA.find(c1);
-            var i2 = ALPHA.find(c2);
+        var s = null;
+        try { s = initials as String; } catch(e) { s = null; }
+        if (s == null) { s = "" + initials; }
+        if ((s as String).length() >= 2) {
+            var c1 = (s as String).substring(0, 1);
+            var c2 = (s as String).substring(1, 1);
+            var lower = "abcdefghijklmnopqrstuvwxyz";
+            var i1 = ALPHA.find(c1); if (i1 < 0) { i1 = lower.find(c1); }
+            var i2 = ALPHA.find(c2); if (i2 < 0) { i2 = lower.find(c2); }
             if (i1 >= 0 && i1 < 26 && i2 >= 0 && i2 < 26) {
                 _ini1 = i1 as Number;
                 _ini2 = i2 as Number;

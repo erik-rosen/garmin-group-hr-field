@@ -72,7 +72,8 @@ class GroupManager {
     }
 
     // Returns { :id => peerId, :hr => Numeric, :initials => String?, :z2 => Number? } or null
-    function getTopPeer(maxAgeMs as Number) as Dictionary or Null {
+    // excludeSelfId: if provided, exclude this peer ID from results
+    function getTopPeer(maxAgeMs as Number, excludeSelfId as String or Number or Null) as Dictionary or Null {
         prune(maxAgeMs);
         var now = System.getTimer();
         var keys = _peers.keys();
@@ -82,6 +83,8 @@ class GroupManager {
         var bestZ2 = null;
         for (var i = 0; i < keys.size(); i += 1) {
             var k = keys[i];
+            // Skip if this is the excluded self ID
+            if (excludeSelfId != null && k.equals(excludeSelfId)) { continue; }
             var rec = _peers[k] as PeerRec;
             if ((now - rec.ts) <= maxAgeMs) {
                 var hrf = (rec.hr as Float);
@@ -95,7 +98,8 @@ class GroupManager {
     }
 
     // Returns array of up to 'limit' peers sorted by HR desc, items are { :id, :hr, :initials?, :z2? }
-    function getTopPeers(maxAgeMs as Number, limit as Number) as Array {
+    // excludeSelfId: if provided, exclude this peer ID from results
+    function getTopPeers(maxAgeMs as Number, limit as Number, excludeSelfId as String or Number or Null) as Array {
         prune(maxAgeMs);
         var now = System.getTimer();
         var keys = _peers.keys();
@@ -105,6 +109,8 @@ class GroupManager {
         var z2s = [];
         for (var i = 0; i < keys.size(); i += 1) {
             var k = keys[i];
+            // Skip if this is the excluded self ID
+            if (excludeSelfId != null && k.equals(excludeSelfId)) { continue; }
             var rec = _peers[k] as PeerRec;
             if ((now - rec.ts) <= maxAgeMs) {
                 ids.add(k);
